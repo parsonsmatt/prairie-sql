@@ -36,3 +36,6 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - TEMPLATE
+    - hspec
+    build-tools:
+    - hspec-discover
