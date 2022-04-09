@@ -1,4 +1,4 @@
-# Changelog for TEMPLATE
+# Changelog for prairie-sql
 
 ## Unreleased changes
 
