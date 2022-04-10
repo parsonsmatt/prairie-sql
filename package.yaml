@@ -21,6 +21,29 @@ description:         Please see the README on GitHub at <https://github.com/pars
 
 dependencies:
 - base >= 4.12 && < 5
+- prairie
+- text
+- chronos
+- bytestring
+- vector
+- mtl
+- lens
+
+default-extensions:
+  - DerivingStrategies
+  - StandaloneDeriving
+  - FlexibleContexts
+  - UndecidableInstances
+  - GeneralizedNewtypeDeriving
+  - BlockArguments
+  - ImportQualifiedPost
+  - LambdaCase
+  - OverloadedStrings
+  - RecordWildCards
+  - TypeFamilies
+  - TypeOperators
+  - TypeApplications
+  - ScopedTypeVariables
 
 library:
   source-dirs: src
