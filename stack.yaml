@@ -3,3 +3,4 @@ resolver:
 
 packages:
 - .
+- ../prairie

@@ -21,7 +21,7 @@ description:         Please see the README on GitHub at <https://github.com/pars
 
 dependencies:
 - base >= 4.12 && < 5
-- prairie
+- prairie >= 0.0.2.0
 - text
 - chronos
 - bytestring
@@ -44,6 +44,11 @@ default-extensions:
   - TypeOperators
   - TypeApplications
   - ScopedTypeVariables
+  - DerivingVia
+  - DataKinds
+  - StrictData
+  - EmptyCase
+  - RankNTypes
 
 library:
   source-dirs: src

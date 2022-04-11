@@ -25,8 +25,9 @@ source-repository head
 
 library
   exposed-modules:
-      Prairie.Sql.ColumnType
+      Prairie.Sql.Column
       Prairie.Sql.Row
+      Prairie.Sql.Table
   other-modules:
       Paths_prairie_sql
   hs-source-dirs:
@@ -46,6 +47,11 @@ library
       TypeOperators
       TypeApplications
       ScopedTypeVariables
+      DerivingVia
+      DataKinds
+      StrictData
+      EmptyCase
+      RankNTypes
   ghc-options: -Wall
   build-depends:
       base >=4.12 && <5
@@ -53,7 +59,7 @@ library
     , chronos
     , lens
     , mtl
-    , prairie
+    , prairie >=0.0.2.0
     , text
     , vector
   default-language: Haskell2010
@@ -80,6 +86,11 @@ test-suite prairie-sql-test
       TypeOperators
       TypeApplications
       ScopedTypeVariables
+      DerivingVia
+      DataKinds
+      StrictData
+      EmptyCase
+      RankNTypes
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       hspec-discover:hspec-discover
@@ -90,7 +101,7 @@ test-suite prairie-sql-test
     , hspec
     , lens
     , mtl
-    , prairie
+    , prairie >=0.0.2.0
     , prairie-sql
     , text
     , vector

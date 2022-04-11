@@ -1,17 +1,22 @@
+-- | A module for converting values to and from database rows.
 module Prairie.Sql.Row where
 
+import Chronos
 import Data.Vector (Vector, (!?))
 import Data.Vector qualified as Vector
 import Data.Kind
 import Control.Monad.Except
 import Control.Monad.State
 import Data.Text (Text)
-import Prairie.Sql.ColumnType
+import Prairie.Sql.Column
 import Data.Foldable
 import Prairie
 import Control.Lens
+import Data.ByteString (ByteString)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 
-newtype Row = Row { unRow :: Vector ColumnType }
+newtype Row = Row { unRow :: Vector ColumnVal }
 
 newtype RowParser a
     = RowParser
@@ -29,7 +34,7 @@ data RowError
     = RowColumnError FromColumnError
     | NoMoreColumns Int Int
 
-chompCurrentColumnRaw :: RowParser ColumnType
+chompCurrentColumnRaw :: RowParser ColumnVal
 chompCurrentColumnRaw = do
     RowState {..} <- RowParser get
     case unRow rowStateRow !? rowStateIndex of
@@ -59,29 +64,30 @@ evalRowParser row p =
             , rowStateIndex = 0
             }
 
-newtype Single a = Single a
-    deriving newtype ToColumnType
-
 class ToRow a where
     toRow :: a -> Row
 
-instance ToColumnType a => ToRow (Single a) where
-    toRow a = Row (pure (toColumnType a))
+instance ToColumnVal a => ToRow (Single a) where
+    toRow a = Row (pure (toColumnVal a))
+
+deriving via Single Int instance ToRow Int
+deriving via Single Text instance ToRow Text
+deriving via Single ByteString instance ToRow ByteString
+deriving via Single Time instance ToRow Time
 
 class FromRow a where
     fromRow :: RowParser a
 
-chompCurrentColumn :: FromColumnType a => RowParser a
+chompCurrentColumn :: FromColumnVal a => RowParser a
 chompCurrentColumn = do
     columnType <- chompCurrentColumnRaw
-    case fromColumnType columnType of
+    case fromColumnVal columnType of
         Left err ->
             throwError $ RowColumnError err
         Right a ->
             pure a
 
-
-instance FromColumnType a => FromRow (Single a) where
+instance FromColumnVal a => FromRow (Single a) where
     fromRow = do
         Single <$> chompCurrentColumn
 
@@ -93,7 +99,39 @@ instance (FromRow a, FromRow b) => FromRow (a :& b) where
     fromRow =
         (:&) <$> fromRow <*> fromRow
 
+newtype RowType = RowType (NonEmpty ColumnType)
+    deriving newtype Semigroup
+
+class HasRowType a where
+    toRowType :: proxy a -> RowType
+
+instance (HasColumnType a) => HasRowType (Single a) where
+    toRowType (x :: proxy (Single a)) =
+        RowType (pure (toColumnType x))
+
+instance (HasRowType a, HasRowType b) => HasRowType (a, b) where
+    toRowType (_ :: proxy (a, b)) =
+        toRowType (Nothing @a) <> toRowType (Nothing @b)
+
+instance (HasRowType a, HasRowType b) => HasRowType (a :& b) where
+    toRowType (_ :: proxy (a :& b)) =
+        toRowType (Nothing @a) <> toRowType (Nothing @b)
+
+instance (FieldDict HasRowType rec, HasAtLeastOneField rec) => HasRowType (Entity rec) where
+    toRowType (_ :: proxy (Entity rec)) =
+        RowType $ NonEmpty.fromList $ getConst do
+            tabulateRecordA @rec \field ->
+                withFieldDict @HasRowType field do
+                    let RowType a = toRowType field
+                     in Const (toList a)
+
+-- | This class serves as a witness that a type has at least one field.
+class HasAtLeastOneField rec where
+    atLeastOneFieldProof :: NonEmpty (SomeField rec)
+
 data a :& b = a :& b
+
+infixr 9 :&
 
 -- ok, let us begin
 
@@ -102,14 +140,19 @@ newtype Entity a = Entity a
 unEntity :: Entity a -> a
 unEntity (Entity a) = a
 
-instance FieldDict ToColumnType rec => ToRow (Entity rec) where
+instance FieldDict ToColumnVal rec => ToRow (Entity rec) where
     toRow (Entity rec) = Row $ Vector.fromList $ map f allFields
       where
-          f :: SomeField rec -> ColumnType
+          f :: SomeField rec -> ColumnVal
           f (SomeField fld) =
-              withFieldDict @ToColumnType fld $
-                  toColumnType (view (recordFieldLens fld) rec)
+              withFieldDict @ToColumnVal fld $
+                  toColumnVal (view (recordFieldLens fld) rec)
 
-
-
-infixr 9 :&
+instance
+    FieldDict FromRow rec
+  =>
+    FromRow (Entity rec)
+  where
+    fromRow =
+        Entity <$> tabulateRecordA \field ->
+            withFieldDict @FromRow field fromRow
